@@ -1,1 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Select Your Program</title>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const email = params.get('email');
+
+      if (!email) {
+        document.body.innerHTML = '<p>Email is required in URL (e.g., ?email=someone@example.com)</p>';
+        return;
+      }
+
+      const response = await fetch(`/api/get-deals-by-email?email=${encodeURIComponent(email)}`);
+      const data = await response.json();
+
+      if (!data.length) {
+        document.body.innerHTML = '<p>No deals found for this email.</p>';
+        return;
+      }
+
+      const container = document.createElement('div');
+      container.innerHTML = `<h2>Select Your Program</h2>`;
+
+      const redirectMap = {
+        "Hawaii Mini Semester": {
+          "Accepted": "/programs/hawaii/payment",
+          "Pending": "/programs/hawaii/pending",
+          "Waitlisted": "/programs/hawaii/waitlist"
+        },
+        "South America Semester": {
+          "Accepted": "/programs/south-america/payment",
+          "Pending": "/programs/south-america/pending",
+          "Waitlisted": "/programs/south-america/waitlist"
+        }
+      };
+
+      data.forEach(deal => {
+        const button = document.createElement('button');
+        button.innerText = deal.dealName;
+        button.style = "display: block; margin: 10px 0; padding: 10px 15px; font-size: 16px;";
+        button.onclick = () => {
+          const path = redirectMap?.[deal.pdProgram]?.[deal.programStatus];
+          if (path) {
+            window.location.href = path;
+          } else {
+            alert(`No redirect defined for "${deal.pdProgram}" with status "${deal.programStatus}".`);
+          }
+        };
+        container.appendChild(button);
+      });
+
+      document.body.appendChild(container);
+    });
+  </script>
+</head>
+<body>
+  <p>Loading your available programs...</p>
+</body>
+</html>
 
