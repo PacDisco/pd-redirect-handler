@@ -18,7 +18,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Get contact by email
+    // Step 1: Find the contact by email
     const contactRes = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts/search`, {
       method: 'POST',
       headers: {
@@ -48,37 +48,48 @@ exports.handler = async (event) => {
       };
     }
 
-    // Get deals associated with the contact
-    const dealsRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/search`, {
-      method: 'POST',
+    // Step 2: Get deals associated with this contact
+    const assocRes = await fetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/deal`, {
       headers: {
         Authorization: `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        filterGroups: [{
-          filters: [{
-            propertyName: 'associatedcontactid',
-            operator: 'EQ',
-            value: contactId
-          }]
-        }],
-        properties: ['dealname', 'pd_program', 'program_status'],
-      }),
+      }
     });
 
-    const dealsData = await dealsRes.json();
-    const results = dealsData.results?.map(deal => ({
-      dealId: deal.id,
-      dealName: deal.properties.dealname,
-      pdProgram: deal.properties.pd_program,
-      programStatus: deal.properties.program_status
-    })) || [];
+    const assocData = await assocRes.json();
+    const dealIds = assocData.results?.map(a => a.id) || [];
+
+    if (!dealIds.length) {
+      return {
+        statusCode: 200,
+        headers: CORS_HEADERS,
+        body: JSON.stringify([]), // No deals associated
+      };
+    }
+
+    // Step 3: Fetch deal details (in parallel)
+    const dealPromises = dealIds.map(id =>
+      fetch(`https://api.hubapi.com/crm/v3/objects/deals/${id}?properties=dealname,pd_program,program_status`, {
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json',
+        }
+      }).then(res => res.json())
+    );
+
+    const dealResponses = await Promise.all(dealPromises);
+
+    const deals = dealResponses.map(d => ({
+      dealId: d.id,
+      dealName: d.properties?.dealname,
+      pdProgram: d.properties?.pd_program,
+      programStatus: d.properties?.program_status,
+    }));
 
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: JSON.stringify(results)
+      body: JSON.stringify(deals)
     };
 
   } catch (err) {
