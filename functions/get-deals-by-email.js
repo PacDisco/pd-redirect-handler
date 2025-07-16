@@ -18,7 +18,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Step 1: Get contact by email
+    // Get contact by email
     const contactRes = await fetch(`https://api.hubapi.com/crm/v3/objects/contacts/search`, {
       method: 'POST',
       headers: {
@@ -48,7 +48,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // Step 2: Get deals associated with the contact
+    // Get deals associated with the contact
     const dealsRes = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/search`, {
       method: 'POST',
       headers: {
