@@ -78,6 +78,7 @@ exports.handler = async (event) => {
     );
 
     const dealResponses = await Promise.all(dealPromises);
+console.log("Deal response:", JSON.stringify(dealResponses, null, 2));
 
     const deals = dealResponses.map(d => ({
       dealId: d.id,
