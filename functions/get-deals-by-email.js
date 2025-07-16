@@ -61,10 +61,9 @@ exports.handler = async (event) => {
     const assocData = await assocRes.json();
     console.log("Association response:", JSON.stringify(assocData, null, 2));
 
-    // Correctly extract deal IDs
     const dealIds = (assocData.results || [])
       .map(a => a.toObjectId)
-      .filter(id => !!id); // filter out undefined or null
+      .filter(id => !!id);
 
     if (dealIds.length === 0) {
       return {
@@ -76,7 +75,7 @@ exports.handler = async (event) => {
 
     // Step 3: Fetch deal details in parallel
     const dealPromises = dealIds.map(id =>
-      fetch(`https://api.hubapi.com/crm/v3/objects/deals/${id}?properties=dealname,pd_program,program_status`, {
+      fetch(`https://api.hubapi.com/crm/v3/objects/deals/${id}?properties=dealname,pd_program,dealstage`, {
         headers: {
           Authorization: `Bearer ${API_KEY}`,
           'Content-Type': 'application/json',
@@ -92,7 +91,7 @@ exports.handler = async (event) => {
       dealId: d.id,
       dealName: d.properties?.dealname || 'Unnamed Deal',
       pdProgram: d.properties?.pd_program || '',
-      programStatus: d.properties?.program_status || '',
+      dealStage: d.properties?.dealstage || '',
     }));
 
     return {
