@@ -38,6 +38,8 @@ exports.handler = async (event) => {
     });
 
     const contactData = await contactRes.json();
+    console.log("Contact search response:", JSON.stringify(contactData, null, 2));
+    
     const contactId = contactData.results?.[0]?.id;
 
     if (!contactId) {
@@ -57,17 +59,22 @@ exports.handler = async (event) => {
     });
 
     const assocData = await assocRes.json();
-    const dealIds = assocData.results?.map(a => a.id) || [];
+    console.log("Association response:", JSON.stringify(assocData, null, 2));
 
-    if (!dealIds.length) {
+    // Correctly extract deal IDs
+    const dealIds = (assocData.results || [])
+      .map(a => a.toObjectId)
+      .filter(id => !!id); // filter out undefined or null
+
+    if (dealIds.length === 0) {
       return {
         statusCode: 200,
         headers: CORS_HEADERS,
-        body: JSON.stringify([]), // No deals associated
+        body: JSON.stringify([]),
       };
     }
 
-    // Step 3: Fetch deal details (in parallel)
+    // Step 3: Fetch deal details in parallel
     const dealPromises = dealIds.map(id =>
       fetch(`https://api.hubapi.com/crm/v3/objects/deals/${id}?properties=dealname,pd_program,program_status`, {
         headers: {
@@ -78,19 +85,20 @@ exports.handler = async (event) => {
     );
 
     const dealResponses = await Promise.all(dealPromises);
-console.log("Deal response:", JSON.stringify(dealResponses, null, 2));
+    console.log("Deal responses:", JSON.stringify(dealResponses, null, 2));
 
+    // Extract and format the deal data
     const deals = dealResponses.map(d => ({
       dealId: d.id,
-      dealName: d.properties?.dealname,
-      pdProgram: d.properties?.pd_program,
-      programStatus: d.properties?.program_status,
+      dealName: d.properties?.dealname || 'Unnamed Deal',
+      pdProgram: d.properties?.pd_program || '',
+      programStatus: d.properties?.program_status || '',
     }));
 
     return {
       statusCode: 200,
       headers: CORS_HEADERS,
-      body: JSON.stringify(deals)
+      body: JSON.stringify(deals),
     };
 
   } catch (err) {
